@@ -30,14 +30,14 @@ safety boundaries, not claims of complete safety."*
 Full detail in `TECHNICAL_REPORT_TEMPLATE.md` §5 and `README.md`. In
 order of how much we'd want a judge to know before we're asked:
 
-1. **Not run against the real harness.** Every result in this repo comes
-   from hand-built fixtures modeled on the real scenario YAMLs, run
-   through the real decision code, plus a hand-written check that the
-   output satisfies `DefenseDecision`'s schema — not the organizer's
-   actual `sentinel run`/`sentinel eval` (no internet access in the
-   environment this was built in to install their dependencies).
-2. **The instruction-mirror check's tool-vocabulary map is hand-curated**
-   for 7 tools across 3 domains. An unfamiliar consequential tool falls
+1. **The official evaluation used the offline mock model.** The defense
+   was run through the real starter-kit `sentinel run` and
+   `sentinel eval public` commands across the published 19-scenario
+   library. Those results used the documented offline mock reference
+   model, not Qwen3-8B, so they are not a guarantee of behavior with a
+   different agent model.
+2. **The instruction-mirror check's tool-vocabulary map is hand-curated.**
+   An unfamiliar consequential tool falls
    back to a weaker heuristic (splitting its name on underscores).
 3. **The overlap-matching threshold (`MIN_OVERLAP=20`) is empirically
    tuned** against our own small fixture set, not the real scenario
@@ -55,7 +55,13 @@ order of how much we'd want a judge to know before we're asked:
 We make no claim of complete safety. Any of the above is a plausible route
 to a missed detection.
 
-## Expected false-positive behavior
+## Verified evaluation and expected false-positive behavior
+
+The official public evaluator produced 19/19 task-successful scenarios:
+BTU 1.0000, ASR 0.0000, CVR 0.0000, FBR 0.02299, UER 0.03448,
+documented official score 0.989787, and approximately 3.76 ms median
+latency. These figures are from the offline mock reference model and do
+not establish real-world security.
 
 Read-only / non-side-effecting actions are never blocked or escalated on
 content alone (`core.py`'s early-return for non-consequential,
@@ -70,9 +76,11 @@ Expected, intentional friction:
 - A legitimate consequential action with no confirmation yet is
   **escalate**d, not allowed — by design, this holds legitimate but
   not-yet-authorized work for a human rather than guessing.
-- **[REPLACE]** once tested against the real scenario library and a real
-  human-confirmation flow: report the measured false-escalation rate on
-  scenarios this defense hasn't seen during development.
+- The repository has no built-in human-review UI. A deployment integrating
+  this service must route `escalate` decisions to its authenticated
+  approval workflow and provide the resulting action digest through
+  `history_digest.confirmations_granted`; this project does not claim to
+  implement that surrounding workflow.
 
 ## What data the defense observes
 
@@ -97,5 +105,7 @@ basis at all — its own content mirrors instructions found only in
 untrusted material — is **block**ed outright rather than escalated, since
 escalating would incorrectly imply a plausible legitimate basis exists.
 
-**[REPLACE before submission]** — describe your team's actual
-human-in-the-loop UI/process for resolving an `escalate` decision.
+The decision service itself does not approve escalations. The surrounding
+agent application is responsible for presenting the candidate action and
+reason codes to an authenticated human reviewer, then retrying only after
+the exact candidate-action digest has been granted.

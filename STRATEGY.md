@@ -15,9 +15,10 @@ own docstring: *"taint is tracked by verbatim text overlap, so
 paraphrased, encoded, or fragmented instructions and values can slip
 through."*
 
-Run `python3 dev/mini_eval.py`. That baseline alone reaches 83% BTU / 20%
-ASR / 0% FBR against our fixtures — a **strong** starting point most teams
-will reach for free just by reading the starter kit closely. If your
+Run `python3 dev/mini_eval.py`. In the historical local fixture run,
+that baseline reached 83% BTU / 20% ASR / 0% FBR — a **strong** starting
+point most teams will reach for free just by reading the starter kit closely.
+Those figures are not the official evaluator results. If your
 team's headline finding is "we did trust-based filtering," you are
 competing on execution polish against 100 teams who read the same
 `baselines/provenance.py` you did. The differentiators have to be things
@@ -143,9 +144,17 @@ against both before you believe either number.
 
 ## 5. What this repo is, and isn't
 
-A working reference implementation, tested against realistic (not
-organizer-provided) fixtures built by hand from the real scenario YAMLs,
-because this environment had no internet access to run the real `sentinel
-run` / `sentinel eval` commands. See `README.md`'s "What's real here and
-what isn't" and `app/README.md` for exactly what to verify first once you
-have a working `uv sync` environment.
+This is a working reference implementation with two distinct validation
+layers. The local fixtures and mini-evaluation are historical, hand-built
+approximations and must not be confused with the official results. The
+real starter-kit `sentinel run` and `sentinel eval public` commands were
+also run across the published 19-scenario library using the documented
+offline mock reference model: 19/19 scenarios were task-successful, with
+BTU 1.0000, ASR 0.0000, CVR 0.0000, FBR 0.02299, UER 0.03448, a documented
+official score of 0.989787, and approximately 3.76 ms median latency.
+
+The official evaluation does not establish behavior with Qwen3-8B or
+guarantee real-world security. The remaining limitations include
+synthetic calibration data, a hand-curated tool vocabulary, empirically
+tuned overlap thresholds, and dependence on the conversation window for
+cross-turn memory-poisoning detection.

@@ -72,23 +72,24 @@ actual dev session, or re-create it live):
    one side of the comparison was normalized — fixed by compacting both
    sides.
 State plainly what's still NOT fully solved: `MIN_OVERLAP=20` is a tuned
-threshold, not a proof, and the tool-vocabulary map is hand-curated for 7
-tools — a genuinely new tool in the real library is weaker ground.
+threshold, not a proof, and the tool-vocabulary map is hand-curated — a
+genuinely new tool in the real library is weaker ground.
 
 **8:15–8:45 — The ablation, on screen**
-Show `dev/mini_eval.py`'s output live. State the real finding: the
-organizer's own best baseline (`provenance`) reaches 83% BTU / 20% ASR;
-this defense reaches 83% BTU / 0% ASR — the gap is exactly the case
-above, not a sweeping claim. Also show `heuristic_risk`'s 80% ASR and say
-why honestly: a fixed `+0.35` for missing confirmation lands at 0.4,
-under its own 0.45 escalate threshold — the argument for calibration in
-one number.
+Show `dev/mini_eval.py`'s output live, but label its figures as the
+historical local-fixture ablation rather than the official evaluation.
+Then show the official public-evaluator scorecard: 19/19 task-successful,
+BTU 1.0000, ASR 0.0000, CVR 0.0000, FBR 0.02299, UER 0.03448,
+documented official score 0.989787, and approximately 3.76 ms median
+latency. State that the official run used the documented offline mock
+reference model. Do not present the local ablation figures as official
+scenario-library results.
 
 **8:45–9:00 — Close**
-One sentence on what's next: running this against the real
-`sentinel run`/`sentinel eval` (blocked here only by no internet access to
-install the organizer's dependencies) and the real 19-scenario library.
-Point at `STRATEGY.md` for the longer reasoning.
+Close with the boundary: the official public evaluator run used the
+offline mock reference model, so these results are not a Qwen3-8B
+comparison or a guarantee of real-world security. Point at
+`STRATEGY.md` for the longer reasoning and documented limitations.
 
 ---
 

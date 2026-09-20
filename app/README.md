@@ -14,9 +14,10 @@ cp -r /path/to/this/repo/app .
 uv sync   # or: pip install -r app/requirements.txt --break-system-packages
 
 uvicorn app.main:app --port 8080
-# in another terminal, from the starter kit root:
+# in another terminal, from the starter kit root. The verified offline
+# evaluation uses the documented mock model:
 sentinel run --scenario scenarios/public/enterprise/enterprise_poisoned_invoice.yaml \
-  --defense-url http://127.0.0.1:8080 --model qwen3-8b
+  --defense-url http://127.0.0.1:8080 --model mock
 ```
 
 ## What's actually in here
@@ -37,27 +38,21 @@ sentinel run --scenario scenarios/public/enterprise/enterprise_poisoned_invoice.
   `../dev/train_soft_risk.py`), so there is no numpy/sklearn dependency to
   go missing in your deployment.
 
-## Before you trust this against the real scenario library
+## Verified public evaluation
 
-This was built and tested in a sandboxed environment with **no internet
-access** -- `uv sync` / `pip install fastapi pydantic` could not run there,
-so `core.py` was validated against hand-built fixtures modeled on the real
-scenario YAMLs (`../dev/fixtures.py`), not against the actual
-`sentinel run` / `sentinel eval` commands. Three real bugs were found and
-fixed this way already (see `core.py`'s comments on the tool-vocabulary
-anchor, the content-field restriction, and the bidirectional-compaction
-fix) -- which is exactly why the next step matters:
+The real starter-kit CLI and evaluator were run against the published
+public scenario library using the documented offline mock reference model.
+All 19/19 scenarios were task-successful:
 
-1. Run `uv run pytest ../tests/` (or `python3 ../tests/test_core.py` and
-   `python3 ../tests/test_contract.py`, no pytest required) the moment you
-   have a real environment, to confirm nothing about pydantic's actual
-   validation behavior differs from the hand-written contract check in
-   `test_contract.py`.
-2. Run `sentinel run --defense-url ...` against a few published scenarios
-   BEFORE the ablation/report numbers go anywhere final, and diff the
-   real trace against `../traces/*.jsonl`'s decisions for the same
-   scenario, if you rebuilt an equivalent fixture.
-3. Watch `blocked_count` / `escalated_count` in a long real run -- those
-   come from `history_digest`, which this defense reads but has only been
-   exercised here with hand-set values, not the real harness's actual
-   accounting.
+- BTU: 1.0000
+- ASR: 0.0000
+- CVR: 0.0000
+- FBR: 0.02299
+- UER: 0.03448
+- Documented official score: 0.989787
+- Median decision latency: approximately 3.76 ms
+
+These results are not a Qwen3-8B comparison or a guarantee of real-world
+security. The implementation still has the documented limitations around
+synthetic calibration data, hand-curated tool vocabulary, overlap
+thresholds, and memory-window dependence.

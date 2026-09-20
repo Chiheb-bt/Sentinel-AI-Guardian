@@ -5,29 +5,18 @@ service_stdlib.py
 Exposes sentinel_guardian.engine.decide() over HTTP so it can be pointed
 to by `sentinel run --defense-url http://127.0.0.1:8080 --model qwen3-8b`
 (spec page 4). Built on Python's stdlib http.server ONLY -- no fastapi,
-no pydantic, nothing to `pip install` -- because this container has no
-network access to install anything, and because it means this literally
-runs the moment you clone the repo, with no setup step to get wrong
-before your first rehearsal run.
+no pydantic, nothing to `pip install`. This is a legacy standalone
+adapter; the official HTTP-defense path is the FastAPI app in `app/`,
+which was used for the verified public evaluation.
 
-IMPORTANT -- READ THIS BEFORE YOUR FIRST REAL RUN:
-The exact JSON shape the real `sentinel run` harness POSTs is defined by
-the starter kit (github.com/Skan22/Sentinel_Starter_Kit), which is not
-reachable from the environment this file was written in (no internet
-access here). `parse_request()` below is the ONE function you need to
-edit once you have the real repo open: make it turn the harness's actual
-request body into a CandidateAction + list of Observations, using
-whatever field names the real schema uses. `format_response()` is the
-other one: make it turn our Decision back into whatever shape the harness
-expects for allow/block/escalate/rewrite. Everything else in this file,
-and all of sentinel_guardian/, should not need to change.
+IMPORTANT:
+This legacy adapter is not the path used by the official evaluator.
+The starter-kit's request and response contract is implemented by
+`app/models.py`, `app/decision.py`, and `app/main.py`.
 
-If the starter kit does ship a FastAPI scaffold (the spec says the
-`python-defense` kit includes one), it's almost certainly cleaner to
-`pip install fastapi` in their scaffold and call `decide()` from inside
-it instead of running this file standalone -- this file exists so you
-have a working, testable server on day 0 even before you've looked at
-their code.
+The standalone adapter remains available for local experiments, but its
+results should not be substituted for the official public-evaluator
+results documented elsewhere in the repository.
 """
 
 from __future__ import annotations

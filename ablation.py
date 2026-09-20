@@ -17,7 +17,9 @@ This produces real numbers instead of invented "low/medium/high" labels.
 Copy the printed table straight into the technical report's ablation
 section -- and copy the caveat with it: the scenario set is our own small,
 illustrative corpus (scenarios/scenario_lib.py), not the organizer's
-19-scenario library, which is not available in this environment.
+19-scenario library. The official 19-scenario evaluator results are
+reported separately in TECHNICAL_REPORT_TEMPLATE.md and use the documented
+offline mock reference model.
 """
 
 from __future__ import annotations

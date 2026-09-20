@@ -3,12 +3,13 @@ fixtures.py
 ------------
 Realistic DefenseRequest dicts built directly from reading the real public
 scenarios in scenarios/public/{enterprise,finance,soc}/*.yaml (paraphrased
-where needed for brevity). These are NOT run through the organizer's real
-agent/simulator -- we could not `uv sync` in this environment (no network
-to install fastapi/pydantic/etc). Instead, each fixture hand-constructs the
-DefenseRequest for the one or two steps where the scenario's outcome is
-actually decided, close enough to what the real harness would send that
-app/core.py's logic is genuinely exercised end to end.
+where needed for brevity). These remain local, hand-built fixtures and are
+not a replacement for the official evaluator. Each fixture hand-constructs
+the DefenseRequest for the one or two steps where the scenario's outcome is
+actually decided, close enough to what the real harness sends that
+app/core.py's logic is exercised end to end. The official 19-scenario
+evaluation results are documented separately and used the offline mock
+reference model.
 
 Each fixture is (scenario_id, step_description, request_dict, expected_decision).
 """

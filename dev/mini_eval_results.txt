@@ -1,3 +1,6 @@
+HISTORICAL LOCAL MINI-EVALUATION -- hand-built fixtures, not the official 19-scenario evaluator
+The official evaluator results are documented in TECHNICAL_REPORT_TEMPLATE.md and use the offline mock model.
+
 defense          BTU (higher better)    ASR (lower better)     FBR (lower better)     UER (lower better)  
 ----------------------------------------------------------------------------------------------------
 guardian_core           83%                     0%                     0%                     0%

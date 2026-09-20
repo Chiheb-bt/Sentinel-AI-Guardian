@@ -2,38 +2,36 @@
 
 **AI Agent Security & Runtime Defense**
 
-SENTINEL Guardian is a runtime security layer for tool-using AI agents. It evaluates proposed actions before execution and prevents untrusted content from becoming unauthorized authority.
-
-> **Core principle:** Untrusted content can be evidence, but it cannot grant authority.
+SENTINEL Guardian is a runtime security layer for tool-using AI agents that evaluates proposed actions before execution and prevents untrusted content from becoming unauthorized authority.
 
 Built for the **IndabaX Tunisia — SENTINEL Challenge**.
 
-**Author:** [Chiheb Ben Taghaline](https://github.com/Chiheb-bt)
+**Author:** Chiheb Ben Taghaline · [GitHub: Chiheb-bt](https://github.com/Chiheb-bt)
 
 ---
 
 ## Why SENTINEL?
 
-AI agents increasingly operate across email, documents, logs, search results, memory, and external tools. That creates a security boundary that ordinary prompt filtering does not fully address: content an agent reads may contain instructions that attempt to influence what the agent does next.
+Tool-using AI agents consume content from sources such as documents, email, search results, logs, and persistent memory. Those sources can contain instructions that attempt to influence the agent's next action.
 
-SENTINEL Guardian treats the **origin and trust of information** as security-relevant. It separates evidence from authority, evaluates candidate actions before execution, checks authorization and capabilities, monitors sensitive-data flow, and produces an observable decision with a reason code.
+SENTINEL treats provenance and trust as part of the security boundary. It separates **evidence** from **authority**, evaluates candidate actions before execution, checks capabilities and confirmation, and monitors sensitive-data flow.
 
-The goal is not to block every suspicious string. A security agent should still be able to inspect hostile logs, analyze malicious documents, and investigate suspicious activity without allowing those sources to authorize consequential actions.
+The defense is designed for threats including prompt injection, indirect prompt injection, memory poisoning, hostile tool output, data exfiltration, and unauthorized consequential actions. It also preserves legitimate security analysis of suspicious content instead of blocking solely on alarming text.
 
 ## Core Security Principle
 
-**Untrusted content can be evidence, but it cannot grant authority.**
+> **Untrusted content can be evidence, but it cannot grant authority.**
 
-A document, email, log entry, search result, or memory item may contain useful evidence. Its instructions do not automatically become trusted commands, authorization, confirmation, or elevated capability.
+A document, email, log, search result, or memory item may provide useful evidence. Its instructions do not automatically become trusted commands, authorization, confirmation, or elevated capability.
 
-SENTINEL therefore evaluates the relationship between:
+SENTINEL evaluates the relationship between:
 
-- **provenance** — where information came from;
-- **trust / taint** — whether that information can be trusted for the requested operation;
-- **authority** — who or what is actually authorized to request the action;
-- **capability** — whether the agent has the required permission;
-- **data flow** — whether sensitive information is moving toward an unsafe destination;
-- **consequence** — whether the proposed action creates an external side effect.
+- **Provenance** — where relevant information originated.
+- **Trust / taint** — how that information may affect downstream decisions.
+- **Authority** — who or what is actually authorized to request the action.
+- **Capability** — whether the requested operation is permitted.
+- **Data flow** — whether sensitive information is moving toward an unsafe destination.
+- **Consequence** — whether the candidate action creates an external side effect.
 
 ---
 
@@ -57,31 +55,31 @@ flowchart TD
     K --> L
 ~~~
 
-The deployable HTTP service is in `app/`. The request/response contract is defined in `app/models.py`, and `app/main.py` exposes `/healthz` and `/v1/decision`.
+The deployable HTTP defense is under `app/`. The request/response contract is defined in `app/models.py`, and `app/main.py` exposes `/healthz` and `/v1/decision`.
 
-### Decision model
+### Decision outcomes
 
 | Decision | Meaning |
 |---|---|
-| **ALLOW** | The action satisfies the applicable security and authorization checks. |
-| **BLOCK** | The action is disallowed or presents a strong security, policy, or data-flow violation. |
-| **ESCALATE** | A human decision is required because the system cannot establish sufficient authority or safety. |
+| **ALLOW** | The action passes the applicable security and authorization checks. |
+| **BLOCK** | The action is prevented because a security, policy, authorization, or data-flow check fails. |
+| **ESCALATE** | The system requires a human decision because sufficient authority or safety cannot be established. |
 | **REWRITE** | A safer non-final action is substituted, such as drafting instead of sending. |
 
 ---
 
 ## Threat Model
 
-| Attack / risk | Typical entry point | Primary defense |
-|---|---|---|
-| Direct prompt injection | User or agent-visible instructions | Policy, provenance, action authorization |
-| Indirect prompt injection | Documents, email, external content | Provenance / trust and instruction detection |
-| Memory poisoning | Persistent agent memory | Memory provenance and trust inheritance |
-| Hostile tool output | Search or tool results | Source trust and candidate-action checks |
-| Data exfiltration | External communication / tool arguments | Sensitive-data flow detection |
-| Unauthorized consequential action | Email, transfer, external side effect | Capability and confirmation checks |
-| Multi-step / compositional attack | Chained observations and actions | Provenance, authorization, history, and risk checks |
-| Security-analysis hard negative | Legitimate analysis of hostile content | Context-sensitive policy and utility preservation |
+| Attack / risk | Entry point | Defense | Decision |
+|---|---|---|---|
+| Direct prompt injection | User or agent-visible instructions | Policy, provenance, authorization | BLOCK / ESCALATE / REWRITE |
+| Indirect prompt injection | Documents, email, search, external content | Provenance / trust and instruction detection | BLOCK / ESCALATE / REWRITE |
+| Memory poisoning | Persistent agent memory | Memory provenance and trust inheritance | BLOCK when authority would be derived from untrusted memory |
+| Hostile tool output | Search or tool results | Source trust and candidate-action checks | BLOCK unsafe follow-on action; allow legitimate read-only analysis |
+| Data exfiltration | External communication and tool arguments | Sensitive-data flow detection | BLOCK |
+| Unauthorized consequential action | Email, payment, or other external side effect | Capability and confirmation checks | BLOCK / ESCALATE / REWRITE |
+| Multi-step attack | Chained observations and actions | Provenance, authorization, history, and risk checks | BLOCK / ESCALATE / REWRITE |
+| Security-analysis hard negative | Legitimate analysis containing hostile text | Context-sensitive checks | ALLOW when the requested operation is legitimate and read-only |
 
 ---
 
@@ -89,37 +87,37 @@ The deployable HTTP service is in `app/`. The request/response contract is defin
 
 ### Provenance and trust
 
-SENTINEL tracks where relevant information originated and prevents untrusted sources from silently becoming trusted authority.
+SENTINEL records where relevant information originated and propagates trust through the provenance graph. Untrusted sources cannot silently become trusted authority downstream.
 
 ### Authority vs. evidence
 
-Information can inform an agent's reasoning without authorizing the resulting action. This distinction is central to the defense model.
+Information can inform an agent's reasoning without authorizing the resulting action. Authority is evaluated separately from the content being analyzed.
 
 ### Capabilities and confirmation
 
-Consequential actions require the appropriate authorization. Confirmation is tied to the candidate action rather than being treated as a generic approval signal.
+Consequential actions require the applicable authorization. Confirmation is bound to the candidate action rather than treated as a generic approval signal.
 
-### Sensitive-data flow
+### Secret-flow detection
 
-The defense checks for sensitive information moving toward external destinations, including common transformed representations such as spaced, reversed, Base64, and hexadecimal forms.
+Sensitive values are checked as they move toward external destinations. The implementation also checks common transformed representations including spaced, reversed, Base64, and hexadecimal forms.
 
 ### Memory provenance
 
-Memory is treated as part of the trust boundary. Information originating from an untrusted source must not gain authority simply because it was stored and later recalled.
+Memory remains inside the trust boundary. Storing or recalling content does not by itself upgrade its authority.
 
 ### Rewrite and escalation
 
-When a final side effect is not sufficiently authorized, SENTINEL can replace it with a safer intermediate action or escalate for human review.
+When a final side effect is not sufficiently authorized, SENTINEL can substitute a safer intermediate action or escalate for human review.
 
 ### Observability
 
-Every decision is designed to be explainable through structured reason codes, risk information, and JSONL traces.
+Decisions expose structured reason codes, risk information, and JSONL traces so the security decision can be inspected after execution.
 
 ---
 
 ## Evaluation
 
-The latest verified public HTTP-defense evaluation covered **19/19 scenarios** using the documented offline mock reference model.
+The latest verified public HTTP-defense evaluation covered **19/19 scenarios**.
 
 | Metric | Result |
 |---|---:|
@@ -130,71 +128,77 @@ The latest verified public HTTP-defense evaluation covered **19/19 scenarios** u
 | FBR | **0.0230** |
 | UER | **0.0345** |
 | Official score | **0.989787** |
-| Average decision latency | **~3.8 ms** |
+| Average decision latency | **≈ 3.8 ms** |
 
-Local automated validation also passes:
+These results come from **one local public evaluation using the documented offline mock reference model**. They are evidence for that evaluation run, not a guarantee of perfect security or hackathon success.
 
-- 6/6 core property tests
-- 9/9 standalone engine tests
-- contract/output-shape checks
-
-These results are evidence from a local public evaluation, **not a guarantee of perfect security or hackathon success**. The public evaluation used the documented offline mock reference model; Qwen3-8B was not used for these measurements because its weights were unavailable in the offline environment.
+The local regression suite currently contains **15 pytest-discovered tests** across the core and standalone engine test files. The contract check is a separate executable validation because it can run without the optional Pydantic test dependency.
 
 ---
 
 ## Hard Negatives
 
-A useful security agent must distinguish between:
+A security defense must distinguish between:
 
-> **an instruction attempting to control the agent**
+> **a malicious instruction attempting to control the agent**
 
 and
 
-> **legitimate security analysis containing suspicious instructions as evidence**.
+> **legitimate security analysis containing suspicious text as evidence**.
 
-For example, an analyst may need to read a malicious email or inspect a hostile log. Blocking the analysis merely because the text contains words such as "ignore previous instructions" would reduce utility without necessarily improving security.
+A SOC analyst may need to inspect a malicious email, hostile log, or incident report containing phrases such as `ignore previous instructions`. Blocking the analysis merely because the text contains an alarming phrase would reduce utility without proving that the proposed action is unsafe.
 
-SENTINEL therefore evaluates the **source, authority, requested action, and consequences**, rather than treating every suspicious string as an automatic block.
+SENTINEL therefore evaluates the **source, authority, requested action, and consequences**, not just the presence of suspicious strings.
 
 ---
 
-## Demo Flow
+## Demo
 
-The core demonstration follows:
+The demonstration flow is:
 
 **Attack → Detection → Decision → Outcome → Trace**
 
-1. An attacker-controlled document or other untrusted source contains an injected instruction.
-2. The agent reads the content and proposes an action.
-3. SENTINEL identifies the source provenance and evaluates the candidate action.
-4. Authority, capability, data-flow, and risk checks are applied.
-5. SENTINEL returns **BLOCK**, **ESCALATE**, or **REWRITE** when the action is not sufficiently authorized.
-6. The trace shows why the decision was made and whether a harmful side effect was prevented.
-7. A legitimate security-analysis hard negative demonstrates that useful investigation can still be allowed.
+Run the standalone scenario and mutation demo:
+
+~~~bash
+python run_demo.py
+~~~
+
+Generate HTTP-style decision traces for the dashboard:
+
+~~~bash
+python dev/run_demo.py
+python dashboard/build_dashboard.py
+~~~
+
+The generated JSONL traces are stored under `traces/`.
 
 ---
 
 ## Repository Structure
 
 ~~~text
-app/                    Deployable FastAPI defense and decision logic
-  core.py               Production-style decision path
-  decision.py           HTTP adapter entry point
-  main.py               FastAPI application
-  models.py             Request/response schema
+app/                    Deployable FastAPI defense
+  core.py               HTTP decision engine
+  decision.py           HTTP adapter
+  main.py               FastAPI entry point
+  models.py             Request/response models
+  requirements.txt      HTTP-service dependencies
 
-engine.py               Standalone/reference engine
+sentinel_guardian/      Standalone/reference security engine
 tests/                  Core, contract, and engine tests
-dev/                    Fixtures, baselines, training, and demo tooling
-dashboard/              Observability dashboard
-traces/                 JSONL event traces
+dev/                    Fixtures, evaluation, and demo tooling
+scenarios/              Standalone scenario definitions
+dashboard/              Trace observability dashboard
+traces/                 JSONL decision traces
+
 STRATEGY.md             Project strategy
-SAFETY_STATEMENT.md     Responsible-AI / safety statement
+SAFETY_STATEMENT.md     Safety statement
 TECHNICAL_REPORT_TEMPLATE.md
 CONTRIBUTING.md
 ~~~
 
-> The repository currently contains both a standalone/reference engine and the production-style `app/core.py` decision path. They are intentionally documented separately rather than silently merged.
+The repository contains both a standalone/reference engine and the HTTP-defense path under `app/`. They are documented separately rather than silently presented as the same implementation.
 
 ---
 
@@ -205,6 +209,11 @@ From the repository root:
 ~~~bash
 python3 -m venv .venv
 source .venv/bin/activate
+
+# Core / standalone engine dependencies
+python -m pip install -r requirements.txt
+
+# HTTP defense dependencies
 python -m pip install -r app/requirements.txt
 ~~~
 
@@ -214,9 +223,13 @@ On Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
 ~~~
 
+The root requirements file contains the standalone engine dependency; `app/requirements.txt` contains the FastAPI, Uvicorn, and Pydantic dependencies for the HTTP service.
+
+---
+
 ## Running Tests
 
-Run the local test suite:
+Run the executable regression checks:
 
 ~~~bash
 python tests/test_core.py
@@ -224,11 +237,19 @@ python tests/test_contract.py
 python tests/test_engine.py
 ~~~
 
-The current verified baseline is **15 passing tests**, with the contract/output-shape checks also passing.
+If pytest is installed, the same test suite can be run with:
+
+~~~bash
+python -m pytest -q tests
+~~~
+
+The verified baseline is **15 passing pytest tests**.
+
+---
 
 ## Running the HTTP Defense
 
-Start the FastAPI defense service:
+Start the FastAPI service:
 
 ~~~bash
 uvicorn app.main:app --port 8080
@@ -239,49 +260,33 @@ The service exposes:
 - `GET /healthz`
 - `POST /v1/decision`
 
+---
+
 ## Public Evaluation
 
-The official starter kit is required for the public evaluator. From the starter-kit environment, run the defense service and then use:
+The official public evaluator is provided by the SENTINEL starter kit. From the starter-kit environment, the verified command is:
 
 ~~~bash
 sentinel eval public --defense-url http://127.0.0.1:8080 --json
 ~~~
 
-Use the official starter-kit documentation for the exact environment and evaluation setup.
-
-## Dashboard
-
-The local dashboard can be rebuilt from the available traces:
-
-~~~bash
-python dashboard/build_dashboard.py
-~~~
+The starter kit itself is not part of this repository. Use its official documentation for the exact environment setup.
 
 ---
 
 ## Collaboration
 
-1. Clone the repository.
-2. Create a focused feature branch.
+1. Fork or clone the repository.
+2. Create a focused branch.
 3. Install the dependencies.
-4. Run the tests before making changes.
+4. Run the tests.
 5. Make a focused change.
-6. Add or update regression tests for security-sensitive behavior.
-7. Run the full test suite again.
-8. Push the branch.
-9. Open a pull request with a concise summary and test results.
+6. Add regression tests for security-sensitive behavior.
+7. Run the tests again.
+8. Commit and push the branch.
+9. Open a pull request with a concise summary, tests, security implications, and known limitations.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the collaboration workflow.
-
-Do not commit credentials, `.env` files, virtual environments, caches, or local generated artifacts.
-
----
-
-## Responsible AI
-
-SENTINEL is a defensive security project. Its purpose is to reduce unauthorized or unsafe behavior by tool-using AI agents while preserving legitimate analysis and user utility.
-
-The system is not presented as perfectly secure. Evaluation results are reported with their scope and limitations, and security decisions remain subject to the assumptions and coverage of the implemented threat model.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow.
 
 ---
 
@@ -295,6 +300,6 @@ AI / Robotics / Security Engineering
 
 ---
 
-## License
+## Scope
 
-No license is currently declared for this repository. If the project is intended for public reuse, add an explicit license before presenting it as an open-source project.
+SENTINEL Guardian is a defensive AI-security project. The repository reports evaluation results with their scope and limitations and does not claim perfect or guaranteed security.

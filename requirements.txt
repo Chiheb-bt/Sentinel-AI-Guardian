@@ -1,0 +1,11 @@
+numpy>=1.24
+
+# Nothing else is required to run engine.py, the scenarios, the tests, the
+# ablation study, or service_stdlib.py -- everything is stdlib + numpy on
+# purpose, so the whole thing runs offline with zero setup friction.
+#
+# Optional, only if you rewrap service_stdlib.py's logic inside the
+# starter kit's own FastAPI scaffold instead of running it standalone:
+#   fastapi
+#   uvicorn
+#   pydantic

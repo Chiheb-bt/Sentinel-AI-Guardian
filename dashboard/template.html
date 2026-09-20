@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SENTINEL Guardian — Observability</title>
+<style>
+  :root{
+    --bg:#0A0F1A; --surface:#111A2C; --surface-2:#1A2540; --surface-3:#212D4D;
+    --border:#28345A; --border-soft:#1D2745;
+    --text:#E7ECF7; --text-dim:#8C98BC; --text-faint:#5C6690;
+    --allow:#34D399; --allow-dim:#1B4A3C;
+    --block:#F0576B; --block-dim:#4A2030;
+    --escalate:#F5A93F; --escalate-dim:#4A3A1B;
+    --rewrite:#9B8CF6; --rewrite-dim:#2E2A54;
+    --t0:#8A2846; --t1:#C4453F; --t2:#D98A3D; --t3:#4FA187; --t4:#3D8BD1; --t5:#6C63E8;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);}
+  body{display:flex;flex-direction:column;font-size:14px;line-height:1.5;}
+
+  header{
+    display:flex;align-items:center;gap:16px;
+    padding:14px 20px;border-bottom:1px solid var(--border-soft);
+    background:linear-gradient(180deg,#0D1424,#0A0F1A);
+    flex-wrap:wrap;
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;}
+  .brand .mark{
+    width:10px;height:10px;border-radius:2px;
+    background:conic-gradient(from 220deg, var(--t0), var(--t2), var(--t4), var(--t5));
+    box-shadow:0 0 0 3px var(--surface-2);
+  }
+  .brand h1{font-size:15px;margin:0;font-weight:650;letter-spacing:0.2px;}
+  .brand .sub{color:var(--text-dim);font-size:12.5px;}
+  header .spacer{flex:1;}
+  .runpicker{display:flex;align-items:center;gap:8px;}
+  select, .filebtn{
+    background:var(--surface-2);color:var(--text);border:1px solid var(--border);
+    border-radius:7px;padding:7px 10px;font-family:var(--sans);font-size:13px;cursor:pointer;
+  }
+  select:hover,.filebtn:hover{background:var(--surface-3);}
+  input[type=file]{display:none;}
+  .run-outcome{
+    font-family:var(--mono);font-size:11px;font-weight:700;padding:4px 9px;border-radius:6px;
+  }
+  .run-outcome.success{background:var(--allow-dim);color:var(--allow);}
+  .run-outcome.failure{background:var(--block-dim);color:var(--block);}
+  .run-outcome.pending{background:var(--surface-3);color:var(--text-dim);}
+
+  main{flex:1;display:flex;min-height:0;}
+  nav.rail{
+    width:300px;flex-shrink:0;border-right:1px solid var(--border-soft);
+    overflow-y:auto;background:var(--surface);
+  }
+  .rail-head{padding:12px 14px 6px;color:var(--text-faint);font-size:11.5px;display:flex;justify-content:space-between;}
+  .event-row{
+    display:flex;align-items:flex-start;gap:9px;padding:9px 14px;cursor:pointer;
+    border-left:3px solid transparent;border-bottom:1px solid var(--border-soft);
+  }
+  .event-row:hover{background:var(--surface-2);}
+  .event-row.active{background:var(--surface-2);border-left-color:var(--text);}
+  .event-row .step{font-family:var(--mono);color:var(--text-faint);font-size:10.5px;width:34px;flex-shrink:0;padding-top:2px;}
+  .event-row .body{flex:1;min-width:0;}
+  .event-row .type{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .event-row .sub{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+  .dot.user_message{background:var(--t4);}
+  .dot.retrieval_result,.dot.tool_result{background:var(--text-faint);}
+  .dot.tool_request{background:var(--rewrite);}
+  .dot.defense_decision.allow{background:var(--allow);}
+  .dot.defense_decision.block{background:var(--block);}
+  .dot.defense_decision.escalate{background:var(--escalate);}
+  .dot.defense_decision.rewrite{background:var(--rewrite);}
+  .dot.policy_violation{background:var(--block);}
+  .dot.task_success{background:var(--allow);}
+  .dot.task_failure{background:var(--block);}
+
+  section.detail{flex:1;min-width:0;overflow-y:auto;padding:22px 26px 60px;}
+  .empty{color:var(--text-dim);padding:40px;text-align:center;}
+
+  .hero{
+    border:1px solid var(--border);border-radius:12px;background:var(--surface);
+    padding:22px;margin-bottom:18px;overflow-x:auto;
+  }
+  .hero h2{margin:0 0 14px;font-size:12px;color:var(--text-faint);font-weight:650;}
+  .flow{display:flex;align-items:stretch;gap:0;min-width:max-content;}
+  .flow .node{
+    border:1px solid var(--border);border-radius:10px;background:var(--surface-2);
+    padding:12px 14px;min-width:190px;max-width:260px;
+  }
+  .flow .node .kind{font-size:10px;color:var(--text-faint);font-family:var(--mono);margin-bottom:4px;}
+  .flow .node .name{font-size:13px;font-weight:650;margin-bottom:6px;word-break:break-word;}
+  .flow .node .snippet{font-size:12px;color:var(--text-dim);max-height:64px;overflow:hidden;}
+  .flow .trustchip{
+    display:inline-block;margin-top:8px;font-family:var(--mono);font-size:10.5px;
+    padding:2px 7px;border-radius:5px;color:#0A0F1A;font-weight:700;
+  }
+  .flow .arrow{display:flex;align-items:center;justify-content:center;padding:0 10px;color:var(--text-faint);font-size:20px;flex-shrink:0;}
+  .flow .decision-node{
+    border-radius:10px;padding:12px 16px;min-width:150px;display:flex;flex-direction:column;
+    justify-content:center;align-items:flex-start;gap:4px;flex-shrink:0;
+  }
+  .flow .decision-node .outcome{font-size:18px;font-weight:800;letter-spacing:0.3px;}
+  .flow .decision-node .risk{font-family:var(--mono);font-size:11px;opacity:0.85;}
+  .no-sources{color:var(--text-faint);font-size:12px;padding:10px 0;}
+
+  .grid2{display:grid;grid-template-columns:1.3fr 1fr;gap:18px;align-items:start;}
+  @media (max-width:920px){.grid2{grid-template-columns:1fr;}}
+
+  .card{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px;margin-bottom:18px;}
+  .card h3{margin:0 0 12px;font-size:12px;color:var(--text-faint);font-weight:650;}
+  .reasoncodes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+  .rc{font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:6px;background:var(--surface-3);color:var(--text);border:1px solid var(--border);}
+  .explanation{font-size:13.5px;color:var(--text);line-height:1.6;padding:12px 14px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border-soft);}
+
+  .riskbar-track{height:8px;border-radius:5px;background:var(--surface-3);overflow:hidden;margin:6px 0 4px;}
+  .riskbar-fill{height:100%;border-radius:5px;}
+  .risklabels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--text-faint);}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:12.5px;}
+  .kv dt{color:var(--text-faint);}
+  .kv dd{margin:0;font-family:var(--mono);color:var(--text);word-break:break-word;}
+
+  details.raw summary{cursor:pointer;color:var(--text-dim);font-size:12px;user-select:none;}
+  details.raw pre{margin-top:10px;background:#080C16;border:1px solid var(--border-soft);border-radius:8px;padding:14px;font-family:var(--mono);font-size:11.5px;color:#B9C4E6;overflow-x:auto;max-height:340px;}
+
+  .lifecycle{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .lifestate{font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid var(--border);color:var(--text-faint);}
+  .lifestate.current{border-color:var(--escalate);color:var(--escalate);background:var(--escalate-dim);}
+  .lifearrow{color:var(--text-faint);}
+
+  .banner{border-radius:10px;padding:16px 18px;font-size:14px;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+  .banner.success{background:var(--allow-dim);color:var(--allow);border:1px solid var(--allow);}
+  .banner.failure{background:var(--block-dim);color:var(--block);border:1px solid var(--block);}
+  .banner .big{font-size:20px;}
+
+  .content-card{font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;}
+
+  footer{padding:10px 20px;border-top:1px solid var(--border-soft);color:var(--text-faint);font-size:11.5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="mark"></div>
+    <h1>SENTINEL Guardian</h1>
+    <span class="sub">observability trace viewer</span>
+  </div>
+  <div class="spacer"></div>
+  <span id="run-outcome-badge" class="run-outcome pending">—</span>
+  <div class="runpicker">
+    <label class="filebtn" for="filepicker">Load artifact (.jsonl)</label>
+    <input id="filepicker" type="file" accept=".jsonl,.json">
+    <select id="runselect"></select>
+  </div>
+</header>
+
+<main>
+  <nav class="rail">
+    <div class="rail-head"><span>EVENTS</span><span id="event-count"></span></div>
+    <div id="eventlist"></div>
+  </nav>
+  <section class="detail" id="detail">
+    <div class="empty">Select an event to inspect it.</div>
+  </section>
+</main>
+
+<footer>
+  Trust scale: <span style="color:var(--t0)">■</span> adversary_controlled
+  <span style="color:var(--t1)">■</span> untrusted_external
+  <span style="color:var(--t2)">■</span> untrusted_internal
+  <span style="color:var(--t3)">■</span> trusted_internal
+  <span style="color:var(--t4)">■</span> authenticated_user
+  <span style="color:var(--t5)">■</span> system_policy
+  &nbsp;·&nbsp; loads the real Event-log JSONL schema (event_id, type, payload, provenance_refs) —
+  no server, everything runs in this file.
+</footer>
+
+<script id="trace-bundle" type="application/json">__TRACE_BUNDLE_JSON__</script>
+<script>
+const TRUST_COLOR = {
+  adversary_controlled: 'var(--t0)', untrusted_external: 'var(--t1)',
+  untrusted_internal: 'var(--t2)', trusted_internal: 'var(--t3)',
+  authenticated_user: 'var(--t4)', system_policy: 'var(--t5)',
+};
+const OUTCOME_COLOR = { allow: 'var(--allow)', block: 'var(--block)', escalate: 'var(--escalate)', rewrite: 'var(--rewrite)' };
+const OUTCOME_DIM = { allow: 'var(--allow-dim)', block: 'var(--block-dim)', escalate: 'var(--escalate-dim)', rewrite: 'var(--rewrite-dim)' };
+const TYPE_LABEL = {
+  user_message: 'User message', retrieval_result: 'Retrieval', tool_result: 'Tool result',
+  tool_request: 'Candidate action', defense_decision: 'Defense decision',
+  human_confirmation: 'Human confirmation', policy_violation: 'Policy violation',
+  task_success: 'Task success', task_failure: 'Task failure', memory_read: 'Memory read', memory_write: 'Memory write',
+  model_output: 'Model output',
+};
+
+let bundle = JSON.parse(document.getElementById('trace-bundle').textContent || '{}');
+let currentRun = null, currentIdx = 0;
+
+function niceRunName(name){ return name; }
+
+function populateRunSelect(){
+  const sel = document.getElementById('runselect');
+  sel.innerHTML = '';
+  Object.keys(bundle).forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = niceRunName(name);
+    sel.appendChild(opt);
+  });
+  const first = Object.keys(bundle)[0];
+  if(first){ sel.value = first; selectRun(first); }
+}
+
+function selectRun(name){
+  currentRun = name;
+  const events = bundle[currentRun] || [];
+  // default to the most interesting event: the last defense_decision, or the last event
+  let idx = events.length - 1;
+  for(let i = events.length - 1; i >= 0; i--){
+    if(events[i].type === 'defense_decision'){ idx = i; break; }
+  }
+  currentIdx = idx;
+  renderOutcomeBadge();
+  renderEventList();
+  renderDetail();
+}
+
+function renderOutcomeBadge(){
+  const events = bundle[currentRun] || [];
+  const badge = document.getElementById('run-outcome-badge');
+  const success = events.find(e => e.type === 'task_success');
+  const failure = events.find(e => e.type === 'task_failure');
+  if(failure){ badge.textContent = 'RUN: FAILURE'; badge.className = 'run-outcome failure'; }
+  else if(success){ badge.textContent = 'RUN: SUCCESS'; badge.className = 'run-outcome success'; }
+  else { badge.textContent = 'RUN: IN PROGRESS'; badge.className = 'run-outcome pending'; }
+}
+
+function eventSummary(ev){
+  if(ev.type === 'defense_decision'){
+    const p = ev.payload || {};
+    return `${p.action?.tool || p.action?.type || ''} → ${(p.decision||'').toUpperCase()}`;
+  }
+  if(ev.type === 'tool_request'){ return ev.payload?.tool || ev.payload?.type || ''; }
+  if(ev.type === 'retrieval_result' || ev.type === 'tool_result'){
+    return (ev.payload?.kind || ev.payload?.tool || '') + ': ' + (ev.payload?.content || '').slice(0, 40);
+  }
+  if(ev.type === 'user_message'){ return (ev.payload?.content || '').slice(0, 40); }
+  if(ev.type === 'policy_violation'){ return ev.payload?.message || ev.payload?.rule || ''; }
+  if(ev.type === 'task_success' || ev.type === 'task_failure'){ return ev.payload?.note || ev.payload?.reason || ''; }
+  return '';
+}
+
+function renderEventList(){
+  const list = document.getElementById('eventlist');
+  const events = bundle[currentRun] || [];
+  document.getElementById('event-count').textContent = events.length + ' events';
+  list.innerHTML = '';
+  events.forEach((ev, i) => {
+    const div = document.createElement('div');
+    div.className = 'event-row' + (i === currentIdx ? ' active' : '');
+    div.onclick = () => { currentIdx = i; renderEventList(); renderDetail(); };
+    const dotClass = ev.type === 'defense_decision' ? `dot defense_decision ${ev.payload?.decision||''}` : `dot ${ev.type}`;
+    div.innerHTML = `
+      <div class="step">#${ev.step_id}</div>
+      <div class="${dotClass}"></div>
+      <div class="body">
+        <div class="type">${TYPE_LABEL[ev.type] || ev.type}</div>
+        <div class="sub">${esc(eventSummary(ev))}</div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function esc(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function findEventById(events, id){
+  return events.find(e => e.event_id === id);
+}
+
+function sourceNodeHtml(ev){
+  const p = ev.payload || {};
+  const trustMap = p.trust_levels || {};
+  const trustVals = Object.values(trustMap).filter(Boolean);
+  const worst = trustVals.sort((a,b) => trustRank(b) - trustRank(a))[0];
+  const color = TRUST_COLOR[worst] || '#666';
+  return `
+    <div class="node">
+      <div class="kind">${esc(ev.type)} · step ${ev.step_id}</div>
+      <div class="name">${esc(p.kind || p.tool || 'source')}</div>
+      <div class="snippet">${esc((p.content||'').slice(0,180))}</div>
+      ${worst ? `<span class="trustchip" style="background:${color}">${esc(worst)}</span>` : ''}
+    </div>
+    <div class="arrow">→</div>
+  `;
+}
+
+const TRUST_ORDER = ['system_policy','authenticated_user','trusted_internal','untrusted_internal','untrusted_external','adversary_controlled'];
+function trustRank(l){ const i = TRUST_ORDER.indexOf(l); return i === -1 ? TRUST_ORDER.length : i; }
+
+function renderDecisionDetail(ev, events){
+  const p = ev.payload || {};
+  const refs = ev.provenance_refs || [];
+  const sourceEvents = refs.map(id => findEventById(events, id)).filter(Boolean);
+  const sourcesHtml = sourceEvents.length
+    ? sourceEvents.map(sourceNodeHtml).join('')
+    : `<div class="node"><div class="kind">provenance</div><div class="name">no declared sources</div></div><div class="arrow">→</div>`;
+
+  const argsStr = Object.entries(p.action?.arguments || {}).map(([k,v]) => `${k}: ${String(v).slice(0,70)}`).join('<br>');
+  const decision = p.decision || 'allow';
+
+  let html = `
+    <div class="hero">
+      <h2>PROVENANCE → ACTION → DECISION</h2>
+      <div class="flow">
+        ${sourcesHtml}
+        <div class="node">
+          <div class="kind">candidate action</div>
+          <div class="name">${esc(p.action?.tool || p.action?.type || '')}</div>
+          <div class="snippet">${argsStr || '(no arguments)'}</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="decision-node" style="background:${OUTCOME_DIM[decision]};border:1px solid ${OUTCOME_COLOR[decision]}">
+          <div class="outcome" style="color:${OUTCOME_COLOR[decision]}">${decision.toUpperCase()}</div>
+          <div class="risk" style="color:${OUTCOME_COLOR[decision]}">risk ${fmt(p.risk_score)} · conf ${fmt(p.confidence)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="card">
+          <h3>WHY</h3>
+          <div class="reasoncodes">${(p.reason_codes||[]).map(r=>`<span class="rc">${esc(r)}</span>`).join('') || '<span class="rc">—</span>'}</div>
+          <div class="explanation">${esc(p.explanation || 'No explanation provided.')}</div>
+        </div>
+        ${p.rewritten_action ? `
+        <div class="card">
+          <h3>REWRITTEN ACTION</h3>
+          <div class="kv">
+            <dt>tool</dt><dd>${esc(p.rewritten_action.tool)}</dd>
+            ${Object.entries(p.rewritten_action.arguments||{}).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(String(v).slice(0,80))}</dd>`).join('')}
+          </div>
+        </div>` : ''}
+        <div class="card">
+          <details class="raw"><summary>raw event (json)</summary><pre>${esc(JSON.stringify(ev, null, 2))}</pre></details>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3>RISK</h3>
+          <div class="riskbar-track"><div class="riskbar-fill" style="width:${Math.round((p.risk_score||0)*100)}%;background:${OUTCOME_COLOR[decision]}"></div></div>
+          <div class="risklabels"><span>0.0</span><span>${fmt(p.risk_score)}</span><span>1.0</span></div>
+          <h3 style="margin-top:18px">METADATA</h3>
+          <dl class="kv">
+            <dt>run</dt><dd>${esc(ev.run_id)}</dd>
+            <dt>step</dt><dd>${ev.step_id}</dd>
+            <dt>actor</dt><dd>${esc(ev.actor)}</dd>
+            <dt>timestamp</dt><dd>${esc(ev.timestamp)}</dd>
+            <dt>sources</dt><dd>${sourceEvents.length}</dd>
+          </dl>
+        </div>
+        ${lifecycleHtml(p)}
+      </div>
+    </div>
+  `;
+  return html;
+}
+
+function fmt(n){ return (typeof n === 'number') ? n.toFixed(2) : n; }
+
+function lifecycleHtml(p){
+  const stages = ['none','prepared','confirmed','executed'];
+  const opToStage = {payment_prepare:'prepared', payment_confirm:'confirmed', payment_execute:'executed'};
+  const tool = p.action?.tool;
+  const reached = opToStage[tool];
+  if(!reached) return '';
+  const effective = p.decision === 'allow' ? reached : (stages[stages.indexOf(reached)-1] || 'none');
+  return `
+    <div class="card">
+      <h3>PAYMENT LIFECYCLE</h3>
+      <div class="lifecycle">
+        ${stages.map((s,i)=>`<span class="lifestate ${s===effective?'current':''}">${s}</span>${i<stages.length-1?'<span class="lifearrow">→</span>':''}`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderGenericDetail(ev){
+  const p = ev.payload || {};
+  let banner = '';
+  if(ev.type === 'task_success') banner = `<div class="banner success"><span class="big">✓</span><div><strong>Task succeeded</strong><br>${esc(p.note||'')}</div></div>`;
+  if(ev.type === 'task_failure') banner = `<div class="banner failure"><span class="big">✕</span><div><strong>Task failed</strong><br>${esc(p.reason||'')}</div></div>`;
+  if(ev.type === 'policy_violation') banner = `<div class="banner failure"><span class="big">⚠</span><div><strong>Policy violation (${esc(p.severity||'')})</strong><br>${esc(p.message||p.rule||'')}</div></div>`;
+
+  const trustMap = p.trust_levels || {};
+  const trustChips = Object.entries(trustMap).filter(([,v])=>v).map(([id,v]) =>
+    `<span class="trustchip" style="background:${TRUST_COLOR[v]||'#666'}">${esc(id)}: ${esc(v)}</span>`
+  ).join(' ');
+
+  return `
+    ${banner}
+    <div class="card">
+      <h3>${esc(TYPE_LABEL[ev.type] || ev.type)}</h3>
+      ${p.content ? `<div class="content-card">${esc(p.content)}</div>` : ''}
+      ${trustChips ? `<div style="margin-top:12px">${trustChips}</div>` : ''}
+      ${!p.content && !trustChips ? `<div class="kv">${Object.entries(p).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(JSON.stringify(v))}</dd>`).join('')}</div>` : ''}
+    </div>
+    <div class="card">
+      <details class="raw"><summary>raw event (json)</summary><pre>${esc(JSON.stringify(ev, null, 2))}</pre></details>
+    </div>
+  `;
+}
+
+function renderDetail(){
+  const el = document.getElementById('detail');
+  const events = bundle[currentRun] || [];
+  const ev = events[currentIdx];
+  if(!ev){ el.innerHTML = '<div class="empty">No events in this run.</div>'; return; }
+  el.innerHTML = ev.type === 'defense_decision' ? renderDecisionDetail(ev, events) : renderGenericDetail(ev);
+}
+
+document.getElementById('runselect').addEventListener('change', e => selectRun(e.target.value));
+
+document.getElementById('filepicker').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let events;
+    try {
+      events = reader.result.trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+    } catch(err){
+      alert('Could not parse file as JSONL (one JSON event object per line).');
+      return;
+    }
+    const name = file.name.replace(/\.jsonl?$/, '');
+    bundle[name] = events;
+    populateRunSelect();
+    document.getElementById('runselect').value = name;
+    selectRun(name);
+  };
+  reader.readAsText(file);
+});
+
+populateRunSelect();
+</script>
+</body>
+</html>

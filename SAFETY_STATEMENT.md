@@ -51,6 +51,12 @@ order of how much we'd want a judge to know before we're asked:
    turn's provenance) being correct — this defense does not
    independently re-derive memory trust from scratch, the same as every
    one of the organizer's five reference baselines.
+6. **Memory writes distinguish evidence from authority using content
+   framing.** A quoted or reported phishing message can be stored as an
+   operational note, while an untrusted instruction presented as policy,
+   authorization, or a rule remains blocked. This framing heuristic is
+   deliberately conservative and is not a complete semantic analysis of
+   every possible note format.
 
 We make no claim of complete safety. Any of the above is a plausible route
 to a missed detection.

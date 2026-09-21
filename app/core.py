@@ -334,6 +334,8 @@ TOOL_VOCAB = {
 # this restriction). Only the free-text payload -- what the agent is about
 # to say or attach -- is checked here.
 CONTENT_ARG_KEYS = {"body", "content", "text", "note", "summary", "message", "justification"}
+MEMORY_REPORTING_WORDS = {"reported", "forwarded", "observed", "received", "quoted", "saying", "claiming"}
+MEMORY_AUTHORITY_RE = re.compile(r"\b(policy|authorization|rule|must|always)\b", re.IGNORECASE)
 
 
 def _tool_vocab(tool: str) -> set[str]:
@@ -357,6 +359,7 @@ def instruction_mirror_detected(action: dict, untrusted_texts_: list[str]) -> bo
     tool = action.get("tool")
     if not tool:
         return False
+
     vocab = _tool_vocab(tool)
     raw_values = [
         str(v) for k, v in action.get("arguments", {}).items()
@@ -378,6 +381,16 @@ def instruction_mirror_detected(action: dict, untrusted_texts_: list[str]) -> bo
             if _overlaps(value_variant, untrusted_texts_):
                 return True
     return False
+
+
+def memory_write_is_authoritative(content: str) -> bool:
+    """Distinguish persisting an untrusted instruction from recording it as evidence."""
+    if not any(mark in content for mark in ('"', "'", "“", "”")):
+        return True
+    words = set(re.findall(r"[a-z]+", content.lower()))
+    if not words.intersection(MEMORY_REPORTING_WORDS):
+        return True
+    return bool(MEMORY_AUTHORITY_RE.search(content))
 
 
 # ---------------------------------------------------------------------
@@ -507,13 +520,14 @@ def decide(request: dict) -> dict:
         if action.get("type") == "memory_write":
             content = action.get("content") or ""
             mirrors_untrusted = _overlaps(content, untrusted_texts_) if untrusted_texts_ else False
-            if mirrors_untrusted:
+            if mirrors_untrusted and memory_write_is_authoritative(content):
                 return _decision(
                     "block", 0.8, 0.65, ["UNTRUSTED_INSTRUCTION_SOURCE"],
-                    "Memory content overlaps untrusted material seen this turn; refusing to "
-                    "persist it verbatim. (Note: the reference harness already taints memory "
-                    "writes with least_trusted() over the turn's provenance -- this check is a "
-                    "second, independent line of defense, not a substitute for that.)",
+                    "Memory content appears to persist an instruction from untrusted material "
+                    "as authority; refusing to store it verbatim. (Note: the reference harness "
+                    "already taints memory writes with least_trusted() over the turn's "
+                    "provenance -- this check is a second, independent line of defense, not a "
+                    "substitute for that.)",
                 )
             risk = soft_risk_score(build_features(request, action, untrusted_source_ids, sensitive_texts))
             return _decision("allow", risk, 0.7, ["MEMORY_WRITE_CLEAN"])

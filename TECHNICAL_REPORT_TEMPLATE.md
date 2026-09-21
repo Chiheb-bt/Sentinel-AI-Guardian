@@ -158,6 +158,14 @@ model, not Qwen3-8B.
    non-generic `incident_create` vocabulary, removed the
    `soc_hostile_log_text` false positive: BTU rose to 100.00% and FBR fell
    to 2.30% without increasing ASR.
+7. **Memory-write evidence versus authority:** the original `memory_write`
+   branch blocked any write whose content overlapped untrusted text, which
+   over-blocked legitimate security notes that quoted a phishing report.
+   The fix distinguishes quoted/reported evidence from content being
+   persisted as policy or authority: quoted reports are allowed, while
+   authoritative-looking untrusted instructions remain blocked. This was
+   added as a regression fixture and does not weaken the existing memory
+   poisoning case.
 
 ## 6. Responsible AI and safety statement
 
